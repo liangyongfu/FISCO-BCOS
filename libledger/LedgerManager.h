@@ -191,6 +191,38 @@ public:
         m_channelRPCServer = channelRPCServer;
     }
 
+    //seekfunbook
+    void setLedgerMode(int mod)
+    {
+        for (auto item : m_ledgerMap)
+        {
+            if (!item.second)
+                continue;
+            item.second->setMod(mod);
+        }
+    }
+
+    void setBlockTime(uint64_t time)
+    {
+        for (auto item : m_ledgerMap)
+        {
+            if (!item.second)
+                continue;
+            item.second->setBlockTime(time);
+        }
+    }
+
+    void setNewBlock(bool can)
+    {
+        for (auto item : m_ledgerMap)
+        {
+            if (!item.second)
+                continue;
+            item.second->setNewBlock(can);
+        }
+    }
+    //end seekfunbook
+
 private:
     mutable SharedMutex x_groupListCache;
     /// cache for the group List

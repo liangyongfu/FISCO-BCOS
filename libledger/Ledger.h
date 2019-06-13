@@ -140,6 +140,21 @@ public:
         m_channelRPCServer = channelRPCServer;
     }
 
+    //seekfunbook
+    virtual void setMod(int mod)
+    {
+        m_sealer->setMod(mod);
+    }
+    virtual void setBlockTime(uint64_t time)
+    {
+        m_sealer->setBlockTime(time);
+    }
+    virtual void setNewBlock(bool can)
+    {
+        m_sealer->setNewBlock(can);
+    }
+    //end seekfunbook
+
 protected:
     /// load genesis config of group
     void initConfig(std::string const& configPath) override;

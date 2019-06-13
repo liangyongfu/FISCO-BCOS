@@ -77,6 +77,23 @@ public:
         m_blockSizeIncreaseRatio = blockSizeIncreaseRatio;
     }
 
+    //seekfunbook
+    
+    virtual void setMod(int mod)
+    {
+        m_mode = mod;
+    }
+
+    virtual void setBlockTime(uint64_t time)
+    {
+        m_blockTime = time;
+    }
+    virtual void setNewBlock(bool can)
+    {
+        m_newblock = can;
+    }
+    //end seekfunbook
+
 protected:
     void handleBlock() override;
     bool shouldSeal() override;
@@ -87,6 +104,33 @@ protected:
                (m_pbftEngine->getLeader().first &&
                    m_pbftEngine->getLeader().second == m_pbftEngine->nodeIdx());
     }
+
+    //seekfunbook
+    virtual bool checkTxsEnough(uint64_t maxTxsCanSeal)
+    {
+        if(m_mode == 2)
+        {
+            return m_newblock;
+        }
+        else 
+        {
+            return Sealer::checkTxsEnough(maxTxsCanSeal);
+        }
+    }
+
+    virtual void resetCurrentTime()
+    {
+        if(m_mode == 2)
+        {
+            m_sealing.block.header().setTimestamp(m_blockTime);
+        }
+        else
+        {
+            Sealer::resetCurrentTime();
+        }
+    }
+
+    //end seekfunbook
 
     bool reachBlockIntervalTime() override
     {
@@ -161,6 +205,11 @@ protected:
     uint64_t m_lastBlockNumber = 0;
     bool m_enableDynamicBlockSize = true;
     float m_blockSizeIncreaseRatio = 0.5;
+    //seekfunbook 
+    bool m_newblock = false;
+    int m_mode = 1;              //1:normal  2:reload
+    uint64_t m_blockTime = 0;
+    //end seekfunbook
 };
 }  // namespace consensus
 }  // namespace dev

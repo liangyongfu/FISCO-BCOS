@@ -58,6 +58,12 @@ public:
     {
         (void)channelRPCServer;
     };
+
+    //seekfunbook
+    virtual void setMod(int mod) = 0;
+    virtual void setBlockTime(uint64_t time) = 0;
+    virtual void setNewBlock(bool can) = 0;
+    //end seekfunbook
 };
 }  // namespace ledger
 }  // namespace dev

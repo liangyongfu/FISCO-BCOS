@@ -66,6 +66,7 @@ public:
             m_ledgerManager->stopAll();
     }
 
+
 private:
     bool initSingleGroup(
         GROUP_ID _groupID, std::string const& _path, std::map<GROUP_ID, h512s>& _groudID2NodeList);

@@ -99,6 +99,10 @@ void LedgerInitializer::initConfig(boost::property_tree::ptree const& _pt)
                               << errinfo_comment("[#LedgerInitializer]: Should init at least one "
                                                  "group! Please check configuration!"));
     }
+
+    //seekfunbook
+    m_ledgerManager->setLedgerMode(2);
+    //end seekfunbook
 }
 
 bool LedgerInitializer::initSingleGroup(

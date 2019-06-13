@@ -110,6 +110,12 @@ public:
         return m_consensusEngine;
     }
 
+    //seekfunbook
+    virtual void setMod(int mod){}
+    virtual void setBlockTime(uint64_t time){}
+    virtual void setNewBlock(bool can){}
+    //seekfunbook
+
 protected:
     void reportNewBlock();
     /// sealing block
@@ -155,7 +161,8 @@ protected:
     /// message
     void resetSealingHeader(dev::eth::BlockHeader& header);
     /// reset timestamp of block header
-    void resetCurrentTime()
+    //seekfunbook  add virtual
+    virtual void resetCurrentTime()
     {
         uint64_t parentTime =
             m_blockChain->getBlockByNumber(m_blockChain->number())->header().timestamp();

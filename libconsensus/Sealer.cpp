@@ -128,7 +128,14 @@ void Sealer::doWork(bool wait)
                 return;
             }
             if (shouldHandleBlock())
+            {
                 handleBlock();
+
+                //seekfunbook
+                setNewBlock(false);
+                //end seekfunbook
+            }
+                
         }
     }
     if (shouldWait(wait))

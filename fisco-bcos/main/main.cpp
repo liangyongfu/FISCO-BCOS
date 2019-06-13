@@ -30,6 +30,12 @@
 #include <iostream>
 #include <memory>
 
+//seekfunbook
+#include <leveldb/db.h>
+#include <libdevcore/BasicLevelDB.h>
+#include <thread>
+//end seekfunbook
+
 #if FISCO_EASYLOG
 INITIALIZE_EASYLOGGINGPP
 #endif
@@ -105,6 +111,140 @@ string initCommandLine(int argc, const char* argv[])
     return configPath;
 }
 
+
+//seekfunbook
+dev::db::BasicLevelDB openSrc(std::string path)
+{
+    leveldb::Options option;
+    option.create_if_missing = true;
+    option.max_open_files = 100;
+
+    dev::db::BasicLevelDB* pleveldb = nullptr;
+
+    leveldb::Status status = BasicLevelDB::Open(ldb_option, path, &(pleveldb));
+
+    if (!status.ok())
+    {
+        throw std::runtime_error(" src ::::open LevelDB failed");
+    }
+}
+
+
+//线程函数
+void getSrcData(int argc, const char* argv[])
+{
+    //获取参数
+    boost::program_options::options_description main_options("Usage of FISCO-BCOS");
+    main_options.add_options()("help,h", "print help information")(
+        "version,v", "version of FISCO-BCOS")("config,c",
+        boost::program_options::value<std::string>(), "config file path, eg. config.ini");
+    boost::program_options::variables_map vm;
+    try
+    {
+        boost::program_options::store(
+            boost::program_options::parse_command_line(argc, argv, main_options), vm);
+    }
+    catch (...)
+    {
+        std::cout << "invalid parameters" << std::endl;
+        std::cout << main_options << std::endl;
+        exit(0);
+    }
+    std::string path("./config.ini");
+    if (vm.count("src") )
+    {
+        path = vm["src"].as<std::string>();
+    }
+    else
+    {
+        throw std::runtime_error(" need src path");
+        exit(0);
+    }
+
+    uint64_t start = 0;
+    if (vm.count("startBlock"))
+    {
+        start = vm[startBlock].as<uint64_t>();
+    }
+    else
+    {
+        throw std::runtime_error("need startBlock");
+        exit(0);
+    }
+      
+
+    //打开数据库
+    leveldb::Options option;
+    option.create_if_missing = true;
+    option.max_open_files = 100;
+
+    dev::db::BasicLevelDB* pleveldb = nullptr;
+
+    leveldb::Status status = BasicLevelDB::Open(ldb_option, "/home/seekfunbook/", &(pleveldb));
+
+    if (!status.ok())
+    {
+        throw std::runtime_error(" src ::::open LevelDB failed");
+        exit(0);
+    }
+
+    //获取已迁移之后的块
+    std::string blockHash;
+
+    {
+        static thread_local FixedHash<33> h;
+        toBigEndian(start, bytesRef(h.data() + 24, 8));
+        h[32] = (uint8_t)0;
+        pleveldb->Get(option,(ldb::Slice)h.ref(),&blockHash);
+    }
+
+    std::string d;
+    {
+/*         struct BlockHash
+        {
+            BlockHash() {}
+            BlockHash(h256 const& _h): value(_h) {}
+            BlockHash(RLP const& _r) { value = _r.toHash<h256>(); }
+            bytes rlp() const { return dev::rlp(value); }
+
+            h256 value;
+            static const unsigned size = 65;
+        }; */
+
+        static thread_local FixedHash<33> h = RLP(blockHash).toHash<h256>;
+        h[32] = (uint8_t)0;
+        return (ldb::Slice)h.ref();
+        pleveldb->Get(option, (ldb::Slice)h.ref(), &d);
+
+        if (d.empty())
+        {
+            throw std::runtime_error(" src ::::get block failed");
+            exit(0);
+        }
+
+    }  
+
+    //获取块中交易，并将交易发送到ledger的txpool中
+    RLP block(d);
+    Transaction tx;
+	for (unsigned i = 0; i < block[1].itemCount(); i++)
+    {
+        //block[1][i].data()  可以转为transaction
+        Transaction tx(block[1][i].data());
+    }
+ 
+    //块中交易发送完后，设置ledger 出块
+
+    //循环等待块出完后 再发送下一个块的交易
+
+}
+
+//end seekfunbook
+
+
+
+
+
 int main(int argc, const char* argv[])
 {
     /// set LC_ALL
@@ -134,6 +274,11 @@ int main(int argc, const char* argv[])
     signal(SIGABRT, &ExitHandler::exitHandler);
     signal(SIGTERM, &ExitHandler::exitHandler);
     signal(SIGINT, &ExitHandler::exitHandler);
+
+    //seekfunbook   //启动一个新线程读取块，发送交易，一个块发送完之后 主动让出块，，，出块成功后再发下一个块的交易
+    std::thread th(getSrcData, argc, argv);
+    th.detach();
+    //end seekfunbook
 
     while (!exitHandler.shouldExit())
     {
