@@ -31,9 +31,14 @@
 #include <memory>
 
 //seekfunbook
+#include <libdevcore/db.h>
 #include <leveldb/db.h>
+#include <leveldb/status.h>
+#include <leveldb/write_batch.h>
 #include <libdevcore/BasicLevelDB.h>
 #include <thread>
+#include <chrono>
+#include <libdevcore/FixedHash.h>
 //end seekfunbook
 
 #if FISCO_EASYLOG
@@ -42,6 +47,7 @@ INITIALIZE_EASYLOGGINGPP
 
 using namespace std;
 using namespace dev::initializer;
+using namespace dev;
 
 void setDefaultOrCLocale()
 {
@@ -63,12 +69,17 @@ void version()
     std::cout << "Git Commit Hash    : " << DEV_QUOTED(FISCO_BCOS_COMMIT_HASH) << std::endl;
 }
 
+std::string srcPath;
+uint64_t start;
+std::shared_ptr<LedgerManager> manager;
+
 string initCommandLine(int argc, const char* argv[])
 {
     boost::program_options::options_description main_options("Usage of FISCO-BCOS");
-    main_options.add_options()("help,h", "print help information")(
-        "version,v", "version of FISCO-BCOS")("config,c",
-        boost::program_options::value<std::string>(), "config file path, eg. config.ini");
+    main_options.add_options()("help,h", "print help information")
+        ("version,v", "version of FISCO-BCOS")("config,c",boost::program_options::value<std::string>(), "config file path, eg. config.ini")
+        ("src,s",boost::program_options::value<std::string>(),"src path")
+        ("startBlock,t", boost::program_options::value<uint64_t>(),"startblock");
     boost::program_options::variables_map vm;
     try
     {
@@ -108,140 +119,133 @@ string initCommandLine(int argc, const char* argv[])
         exit(0);
     }
 
+    if(vm.count("src"))
+    {
+        srcPath = vm["src"].as<std::string>();
+    }
+    else{
+        std::cout << "need src " << std::endl;
+        exit(0);
+    }
+
+    if(vm.count("startBlock"))
+    {
+        start = vm["startBlock"].as<uint64_t>();
+    }
+    else{
+        std::cout << "need startBlock " << std::endl;
+        exit(0);
+    }
+
     return configPath;
 }
 
 
 //seekfunbook
-dev::db::BasicLevelDB openSrc(std::string path)
+void toBigEndian_s(uint64_t _val, dev::bytesRef& o_out)
 {
-    leveldb::Options option;
-    option.create_if_missing = true;
-    option.max_open_files = 100;
-
-    dev::db::BasicLevelDB* pleveldb = nullptr;
-
-    leveldb::Status status = BasicLevelDB::Open(ldb_option, path, &(pleveldb));
-
-    if (!status.ok())
-    {
-        throw std::runtime_error(" src ::::open LevelDB failed");
-    }
+	static_assert(std::is_same<bigint, uint64_t>::value || !std::numeric_limits<uint64_t>::is_signed, "only unsigned types or bigint supported"); //bigint does not carry sign bit on shift
+	for (auto i = o_out.size(); i != 0; _val >>= 8, i--)
+	{
+		uint64_t v = _val & (uint64_t)0xff;
+		o_out[i - 1] = (typename dev::bytesRef::value_type)(uint8_t)v;
+	}
 }
 
-
 //线程函数
-void getSrcData(int argc, const char* argv[])
+void getSrcData()
 {
     //获取参数
-    boost::program_options::options_description main_options("Usage of FISCO-BCOS");
-    main_options.add_options()("help,h", "print help information")(
-        "version,v", "version of FISCO-BCOS")("config,c",
-        boost::program_options::value<std::string>(), "config file path, eg. config.ini");
-    boost::program_options::variables_map vm;
-    try
-    {
-        boost::program_options::store(
-            boost::program_options::parse_command_line(argc, argv, main_options), vm);
-    }
-    catch (...)
-    {
-        std::cout << "invalid parameters" << std::endl;
-        std::cout << main_options << std::endl;
-        exit(0);
-    }
     std::string path("./config.ini");
-    if (vm.count("src") )
-    {
-        path = vm["src"].as<std::string>();
-    }
-    else
-    {
-        throw std::runtime_error(" need src path");
-        exit(0);
-    }
-
-    uint64_t start = 0;
-    if (vm.count("startBlock"))
-    {
-        start = vm[startBlock].as<uint64_t>();
-    }
-    else
-    {
-        throw std::runtime_error("need startBlock");
-        exit(0);
-    }
-      
 
     //打开数据库
+    std::cout << " start open srd db" << std::endl;
     leveldb::Options option;
+    leveldb::ReadOptions readoption;
     option.create_if_missing = true;
     option.max_open_files = 100;
 
     dev::db::BasicLevelDB* pleveldb = nullptr;
-
-    leveldb::Status status = BasicLevelDB::Open(ldb_option, "/home/seekfunbook/", &(pleveldb));
+    leveldb::Status status = dev::db::BasicLevelDB::Open(option, "/home/seekfunbook/", &(pleveldb));
 
     if (!status.ok())
     {
         throw std::runtime_error(" src ::::open LevelDB failed");
         exit(0);
     }
+    std::cout << "end  open srd db" << std::endl;
 
-    //获取已迁移之后的块
-    std::string blockHash;
-
+    for( ; 1==1; start++)
     {
-        static thread_local FixedHash<33> h;
-        toBigEndian(start, bytesRef(h.data() + 24, 8));
-        h[32] = (uint8_t)0;
-        pleveldb->Get(option,(ldb::Slice)h.ref(),&blockHash);
-    }
-
-    std::string d;
-    {
-/*         struct BlockHash
-        {
-            BlockHash() {}
-            BlockHash(h256 const& _h): value(_h) {}
-            BlockHash(RLP const& _r) { value = _r.toHash<h256>(); }
-            bytes rlp() const { return dev::rlp(value); }
-
-            h256 value;
-            static const unsigned size = 65;
-        }; */
-
-        static thread_local FixedHash<33> h = RLP(blockHash).toHash<h256>;
-        h[32] = (uint8_t)0;
-        return (ldb::Slice)h.ref();
-        pleveldb->Get(option, (ldb::Slice)h.ref(), &d);
-
-        if (d.empty())
-        {
-            throw std::runtime_error(" src ::::get block failed");
-            exit(0);
+        uint64_t oldblocknumber = manager->blockChain(1)->number();
+        //获取已迁移之后的块
+        std::string blockHash;
+        std::cout << "start get block hash by number" << std::endl;
+        {        
+            static thread_local FixedHash<33> h;
+            dev::bytesRef aa(h.data() + 24, 8);
+            toBigEndian_s(start, aa);
+            h[32] = (uint8_t)0;
+            leveldb::Slice sl((char*)h.data());
+            pleveldb->Get(readoption,sl,&blockHash);
+            std::cout << "end get block hash by number:" << start << " hash:" <<blockHash << " slice:" << sl.data() << std::endl;
         }
+        
 
-    }  
+        std::string d;
+        std::cout << "start get  block" << std::endl;
+        {
+            static thread_local FixedHash<33> h2(RLP(blockHash).toHash<h256>());
+            h2[32] = (uint8_t)0;
+            leveldb::Slice s2((char*)h2.data());
+            pleveldb->Get(readoption, s2, &d);
+            if (d.empty())
+            {
+                std::cout << "get  block error" << "   block hash:" << blockHash<< std::endl;
+                throw std::runtime_error(" src ::::get block failed");
+                exit(0);
+            }
 
-    //获取块中交易，并将交易发送到ledger的txpool中
-    RLP block(d);
-    Transaction tx;
-	for (unsigned i = 0; i < block[1].itemCount(); i++)
-    {
-        //block[1][i].data()  可以转为transaction
-        Transaction tx(block[1][i].data());
+        }  
+        std::cout << "end get  block" << std::endl;
+
+        //获取块中交易，并将交易发送到ledger的txpool中
+        RLP block(d);        
+        std::cout << "there are " << block[1].itemCount() << " txs in block " << start << std::endl;
+
+        continue;
+
+        for (unsigned i = 0; i < block[1].itemCount(); i++)
+        {
+            //block[1][i].data()  可以转为transaction
+            Transaction tx(block[1][i].data(),CheckTransaction::None);
+            manager->txPool(1)->submit(tx);            
+        }   
+    
+        //块中交易发送完后，设置ledger 出块
+        manager->setNewBlock(true);
+
+        //循环等待块出完后 再发送下一个块的交易
+        uint64_t newblocknum = 0;
+        while(true)
+        {
+            newblocknum = manager->blockChain(1)->number();
+            if(newblocknum > oldblocknumber)
+            {
+                break;
+            }
+            else
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+        std::cout << "src block:" << start << "   new block:" << newblocknum << std::endl;
+        
     }
- 
-    //块中交易发送完后，设置ledger 出块
-
-    //循环等待块出完后 再发送下一个块的交易
 
 }
 
 //end seekfunbook
-
-
 
 
 
@@ -276,8 +280,11 @@ int main(int argc, const char* argv[])
     signal(SIGINT, &ExitHandler::exitHandler);
 
     //seekfunbook   //启动一个新线程读取块，发送交易，一个块发送完之后 主动让出块，，，出块成功后再发下一个块的交易
-    std::thread th(getSrcData, argc, argv);
+    manager = initialize->ledgerInitializer()->ledgerManager();
+    std::cout << "start a new thread." << std::endl;
+    std::thread th(getSrcData);
     th.detach();
+    std::cout << " end start a new thread." << std::endl;
     //end seekfunbook
 
     while (!exitHandler.shouldExit())
