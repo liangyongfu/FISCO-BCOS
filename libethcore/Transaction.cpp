@@ -46,6 +46,12 @@ void Transaction::decode(bytesConstRef tx_bytes, CheckTransaction _checkSig)
 
 void Transaction::decode(RLP const& rlp, CheckTransaction _checkSig)
 {
+
+    //seekfunbook
+    decodeOld15(rlp,_checkSig);
+    return;
+    //end seekfunbook
+
     if (g_BCOSConfig.version() >= RC2_VERSION)
     {
         decodeRC2(rlp, _checkSig);
@@ -134,6 +140,75 @@ void Transaction::decodeRC2(RLP const& rlp, CheckTransaction _checkSig)
         u256 s = rlp[12].toInt<u256>();
 
         m_vrs = SignatureStruct(r, s, v);
+
+        if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid())
+            BOOST_THROW_EXCEPTION(InvalidSignature());
+
+        if (_checkSig == CheckTransaction::Everything)
+            m_sender = sender();
+    }
+    catch (Exception& _e)
+    {
+        _e << errinfo_name(
+            "invalid rc2 transaction format: " + toString(rlp) + " RLP: " + toHex(rlp.data()));
+        throw;
+    }
+}
+
+
+void Transaction::decodeOld15(RLP const& rlp, CheckTransaction _checkSig)
+{
+    try
+    {
+        if (!rlp.isList())
+            BOOST_THROW_EXCEPTION(InvalidTransactionFormat()
+                                  << errinfo_comment("rc2 transaction RLP must be a list"));
+
+        m_nonce = rlp[0].toInt<u256>();
+        m_gasPrice = rlp[1].toInt<u256>();
+        m_gas = rlp[2].toInt<u256>();
+        m_blockLimit = rlp[3].toInt<u256>();
+        m_type = rlp[4].isEmpty() ? ContractCreation : MessageCall;
+        m_receiveAddress = rlp[4].isEmpty() ? Address() : rlp[4].toHash<Address>(RLP::VeryStrict);
+        m_value = rlp[5].toInt<u256>();
+
+        if (!rlp[6].isData())
+            BOOST_THROW_EXCEPTION(InvalidTransactionFormat()
+                                  << errinfo_comment("rc2 transaction data RLP must be an array"));
+
+        m_data = rlp[6].toBytes();
+
+        {
+            byte v = rlp[7].toInt<byte>();
+            h256 r = rlp[8].toInt<u256>();
+            h256 s = rlp[9].toInt<u256>();
+
+            if (v > 36)
+                m_chainId = (v - 35) / 2;
+            else if (v == 27 || v == 28)
+                m_chainId = -4;
+            else
+                BOOST_THROW_EXCEPTION(InvalidSignature());
+
+            v = v - ((int)m_chainId * 2 + 35);
+
+            //if (rlp.itemCount() > 10)
+            //	BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("to many fields in the transaction RLP"));
+
+            m_vrs = SignatureStruct{ r, s, v };
+        }
+
+
+        //m_chainId = rlp[7].toInt<u256>();
+        m_groupId = 1;
+        //m_extraData = rlp[9].toBytes();
+
+        // decode v r s by increasing rlp index order for faster decoding
+        //NumberVType v = rlp[10].toInt<NumberVType>() - VBase;
+        //u256 r = rlp[11].toInt<u256>();
+        //u256 s = rlp[12].toInt<u256>();
+
+        //m_vrs = SignatureStruct(r, s, v);
 
         if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid())
             BOOST_THROW_EXCEPTION(InvalidSignature());

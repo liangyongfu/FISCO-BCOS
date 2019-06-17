@@ -152,6 +152,17 @@ void toBigEndian_s(uint64_t _val, dev::bytesRef& o_out)
 	}
 }
 
+class BlockHash
+{
+	BlockHash() {}
+	BlockHash(h256 const& _h): value(_h) {}
+	BlockHash(RLP const& _r) { value = _r.toHash<h256>(); }
+	bytes rlp() const { return dev::rlp(value); }
+
+	h256 value;
+	static const unsigned size = 65;
+};
+
 //线程函数
 void getSrcData()
 {
@@ -167,29 +178,38 @@ void getSrcData()
 
     dev::db::BasicLevelDB* pleveldb = nullptr;
     leveldb::Status status = dev::db::BasicLevelDB::Open(option, "/home/seekfunbook/", &(pleveldb));
-
     if (!status.ok())
     {
-        throw std::runtime_error(" src ::::open LevelDB failed");
+        throw std::runtime_error(" src ::::open seekfunbook LevelDB failed");
+        exit(0);
+    }
+
+    dev::db::BasicLevelDB* extdb = nullptr;
+    status = dev::db::BasicLevelDB::Open(option, "/home/seekfunbookext/", &(extdb));
+    if (!status.ok())
+    {
+        throw std::runtime_error(" src ::::open seekfunbookext LevelDB failed");
         exit(0);
     }
     std::cout << "end  open srd db" << std::endl;
 
-    for( ; 1==1; start++)
+    for( ; /*1==1*/ start < 10; start++)
     {
         uint64_t oldblocknumber = manager->blockChain(1)->number();
         //获取已迁移之后的块
         std::string blockHash;
-        std::cout << "start get block hash by number" << std::endl;
+        
+        std::cout << "start get block hash by number:" << start <<std::endl;
         {        
             static thread_local FixedHash<33> h;
             dev::bytesRef aa(h.data() + 24, 8);
             toBigEndian_s(start, aa);
-            h[32] = (uint8_t)0;
-            leveldb::Slice sl((char*)h.data());
-            pleveldb->Get(readoption,sl,&blockHash);
-            std::cout << "end get block hash by number:" << start << " hash:" <<blockHash << " slice:" << sl.data() << std::endl;
+            h[32] = (uint8_t)1;
+            leveldb::Slice sl((char*)h.data(),33);
+            extdb->Get(readoption,sl,&blockHash);
+            std::cout << "end get block hash by number:" << start << " hash:" << dev::toHex(blockHash) << " slice:" << dev::toHex(sl.ToString()) << std::endl;
         }
+        BlockHash hashB(RLP(blockHash));
         
 
         std::string d;
@@ -197,11 +217,11 @@ void getSrcData()
         {
             static thread_local FixedHash<33> h2(RLP(blockHash).toHash<h256>());
             h2[32] = (uint8_t)0;
-            leveldb::Slice s2((char*)h2.data());
+            leveldb::Slice s2((char*)h2.data(), 33);
             pleveldb->Get(readoption, s2, &d);
             if (d.empty())
             {
-                std::cout << "get  block error" << "   block hash:" << blockHash<< std::endl;
+                std::cout << "get  block error" << "   block hash:" << dev::toHex(blockHash) << " slice:" << dev::toHex(s2.ToString())<< std::endl;
                 throw std::runtime_error(" src ::::get block failed");
                 exit(0);
             }
@@ -211,14 +231,23 @@ void getSrcData()
 
         //获取块中交易，并将交易发送到ledger的txpool中
         RLP block(d);        
+        
+
+        bytes bblock;
+        bblock.resize(d.size());
+        memcpy(bblock.data(), d.data(), d.size());
         std::cout << "there are " << block[1].itemCount() << " txs in block " << start << std::endl;
 
-        continue;
+        //dev::eth::BlockHeader blockHeader(bblock);
+        std::cout << "there are " << block[1].itemCount() << " txs in block " << start << " block time:" <<  uint64_t(block[0][12].toInt<u256>()) << std::endl;
+
+        //continue;
+        manager->setBlockTime(uint64_t(block[0][12].toInt<u256>()));
 
         for (unsigned i = 0; i < block[1].itemCount(); i++)
         {
             //block[1][i].data()  可以转为transaction
-            Transaction tx(block[1][i].data(),CheckTransaction::None);
+            Transaction tx(block[1][i].data(),CheckTransaction::Everything);
             manager->txPool(1)->submit(tx);            
         }   
     
