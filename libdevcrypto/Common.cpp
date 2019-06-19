@@ -129,6 +129,7 @@ bool dev::SignatureStruct::isValid() const noexcept
 {
     static const h256 s_max{"0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"};
     static const h256 s_zero;
+    std::cout<< "v: " << v << "  r:" <<toHex(r) << "  s:" << s <<std::endl;
 
     return (v <= 1 && r > s_zero && s > s_zero && r < s_max && s < s_max);
 }

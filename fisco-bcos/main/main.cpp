@@ -193,7 +193,12 @@ void getSrcData()
     }
     std::cout << "end  open srd db" << std::endl;
 
-    for( ; /*1==1*/ start < 10; start++)
+    std::this_thread::sleep_for(std::chrono::seconds(30));
+    g_BCOSConfig.setVersion(VERSION::SEEK_VERSION);
+    manager->setLedgerMode(2);
+
+    uint64_t end = start+1;
+    for( ; /*1==1*/ start < end; start++)
     {
         uint64_t oldblocknumber = manager->blockChain(1)->number();
         //获取已迁移之后的块
@@ -293,7 +298,7 @@ int main(int argc, const char* argv[])
     }
     catch (std::exception& e)
     {
-        std::cerr << "Init failed!!!" << std::endl;
+        std::cerr << "Init failed!!!  " << e.what() << std::endl;
         return -1;
     }
     version();
@@ -311,8 +316,8 @@ int main(int argc, const char* argv[])
     //seekfunbook   //启动一个新线程读取块，发送交易，一个块发送完之后 主动让出块，，，出块成功后再发下一个块的交易
     manager = initialize->ledgerInitializer()->ledgerManager();
     std::cout << "start a new thread." << std::endl;
-    std::thread th(getSrcData);
-    th.detach();
+    //std::thread th(getSrcData);
+    //th.detach();
     std::cout << " end start a new thread." << std::endl;
     //end seekfunbook
 

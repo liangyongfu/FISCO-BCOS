@@ -46,19 +46,20 @@ void Transaction::decode(bytesConstRef tx_bytes, CheckTransaction _checkSig)
 
 void Transaction::decode(RLP const& rlp, CheckTransaction _checkSig)
 {
-
-    //seekfunbook
-    decodeOld15(rlp,_checkSig);
-    return;
-    //end seekfunbook
-
-    if (g_BCOSConfig.version() >= RC2_VERSION)
+    if (g_BCOSConfig.version() == RC2_VERSION)
     {
         decodeRC2(rlp, _checkSig);
     }
-    else
+    else if (g_BCOSConfig.version() == RC1_VERSION)
     {
         decodeRC1(rlp, _checkSig);
+    }
+    else 
+    {
+        //seekfunbook
+        decodeOld15(rlp,_checkSig);
+        return;
+        //end seekfunbook
     }
 }
 
@@ -111,6 +112,7 @@ void Transaction::decodeRC1(RLP const& rlp, CheckTransaction _checkSig)
 
 void Transaction::decodeRC2(RLP const& rlp, CheckTransaction _checkSig)
 {
+    std::cout<< "decodeRC2" << std::endl;
     try
     {
         if (!rlp.isList())
@@ -158,6 +160,7 @@ void Transaction::decodeRC2(RLP const& rlp, CheckTransaction _checkSig)
 
 void Transaction::decodeOld15(RLP const& rlp, CheckTransaction _checkSig)
 {
+    std::cout<< "decodeOld15" << std::endl;
     try
     {
         if (!rlp.isList())
@@ -182,15 +185,15 @@ void Transaction::decodeOld15(RLP const& rlp, CheckTransaction _checkSig)
             byte v = rlp[7].toInt<byte>();
             h256 r = rlp[8].toInt<u256>();
             h256 s = rlp[9].toInt<u256>();
-
+            byte tmp;
             if (v > 36)
-                m_chainId = (v - 35) / 2;
+                tmp = (v - 35) / 2;
             else if (v == 27 || v == 28)
-                m_chainId = -4;
+                tmp = -4;
             else
                 BOOST_THROW_EXCEPTION(InvalidSignature());
 
-            v = v - ((int)m_chainId * 2 + 35);
+            v = v - (tmp * 2 + 35);
 
             //if (rlp.itemCount() > 10)
             //	BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("to many fields in the transaction RLP"));
@@ -198,9 +201,11 @@ void Transaction::decodeOld15(RLP const& rlp, CheckTransaction _checkSig)
             m_vrs = SignatureStruct{ r, s, v };
         }
 
+        m_chainId = (u256)g_BCOSConfig.chainId();
+
 
         //m_chainId = rlp[7].toInt<u256>();
-        m_groupId = 1;
+        m_groupId = (u256)1;
         //m_extraData = rlp[9].toBytes();
 
         // decode v r s by increasing rlp index order for faster decoding
@@ -316,6 +321,22 @@ void Transaction::encodeRC2(bytes& _trans, IncludeSignature _sig) const
 
         m_vrs->encode(_s);
     }
+
+    std::cout << "encodeRC2" << std::endl;
+    std::cout << "m_type:" << m_type <<std::endl; 
+    std::cout << "sig:" << ((_sig ? c_sigCount : 0) + c_fieldCountRC2WithOutSig) <<std::endl; 
+    std::cout << "m_nonce:" << m_nonce.str() <<std::endl; 
+    std::cout << "m_gasPrice:" << m_gasPrice.str() <<std::endl; 
+    std::cout << "m_gas:" << m_gas.str() <<std::endl; 
+    std::cout << "m_blockLimit:" << m_blockLimit.str() <<std::endl; 
+    std::cout << "m_value:" << m_value.str() <<std::endl; 
+    std::cout << "m_data:" << toHex(m_data) <<std::endl; 
+    std::cout << "m_chainId:" << m_chainId.str() <<std::endl; 
+    std::cout << "m_groupId:" << m_groupId.str() <<std::endl; 
+    std::cout << "m_extraData:" << toHex(m_extraData) <<std::endl; 
+
+    std::cout << "m_vrs :" << " v:"  <<  m_vrs->v  << "  r:" << toHex(m_vrs->r) << "s:" << toHex(m_vrs->s) <<std::endl; 
+
 
     _s.swapOut(_trans);
 }

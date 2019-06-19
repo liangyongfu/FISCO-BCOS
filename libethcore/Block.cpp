@@ -315,10 +315,10 @@ void Block::decodeRC2(
     /// get transaction list
     RLP transactions_rlp = block_rlp[1];
 
-    /// get txsCache
+    /// get txsCache   
     m_txsCache = transactions_rlp.toBytes();
 
-    /// decode transaction
+    /// decode transaction 
     TxsParallelParser::decode(m_transactions, ref(m_txsCache), _option, _withTxHash);
 
     /// get hash

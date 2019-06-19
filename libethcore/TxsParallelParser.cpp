@@ -30,6 +30,29 @@ namespace dev
 {
 namespace eth
 {
+
+//seekfunbook
+#include <execinfo.h>
+///need add  -rdynamic   in makefile
+void traceStack2()
+{
+   int j, nptrs;
+   #define SIZE 100
+   void *buffer[100];
+   char **strings;
+   nptrs = backtrace(buffer, SIZE);
+   strings = backtrace_symbols(buffer, nptrs);
+   if (strings == NULL) {
+       std::cout<< "backtrace_symbols" <<std::endl;
+       exit(EXIT_FAILURE);
+   }
+   for (j = 0; j < nptrs; j++)
+    std::cout << strings[j] << std::endl;
+   free(strings);
+}
+//end seekfunbook
+
+
 bytes TxsParallelParser::encode(Transactions& _txs)
 {
     Offset_t txNum = _txs.size();
@@ -115,6 +138,10 @@ inline void throwInvalidBlockFormat(const std::string& _reason)
 void TxsParallelParser::decode(
     Transactions& _txs, bytesConstRef _bytes, CheckTransaction _checkSig, bool _withHash)
 {
+    //seekfunbook
+    //traceStack2();
+    //end seekfunbook
+
     try
     {
         size_t bytesSize = _bytes.size();

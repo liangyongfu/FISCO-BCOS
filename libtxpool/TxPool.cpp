@@ -45,44 +45,53 @@ std::pair<h256, Address> TxPool::submit(Transaction& _tx)
         return make_pair(_tx.sha3(), toAddress(_tx.from(), _tx.nonce()));
     else if (ret == ImportResult::TransactionNonceCheckFail)
     {
+        std::cout << "TransactionNonceCheckFail" << std::endl;
         BOOST_THROW_EXCEPTION(
             TransactionRefused() << errinfo_comment(
                 "ImportResult::TransactionNonceCheckFail, txHash: " + toHex(_tx.sha3())));
     }
     else if (ImportResult::TransactionPoolIsFull == ret)
     {
+        std::cout << "TransactionPoolIsFull" << std::endl;
         BOOST_THROW_EXCEPTION(
             TransactionRefused() << errinfo_comment(
                 "ImportResult::TransactionPoolIsFull, txHash: " + toHex(_tx.sha3())));
     }
     else if (ImportResult::TxPoolNonceCheckFail == ret)
     {
+        std::cout << "TxPoolNonceCheckFail" << std::endl;
         BOOST_THROW_EXCEPTION(
             TransactionRefused() << errinfo_comment(
                 "ImportResult::TxPoolNonceCheckFail, txHash: " + toHex(_tx.sha3())));
     }
     else if (ImportResult::AlreadyKnown == ret)
     {
+        std::cout << "TransactionAlreadyKown" << std::endl;
         BOOST_THROW_EXCEPTION(
             TransactionRefused() << errinfo_comment(
                 "ImportResult::TransactionAlreadyKown, txHash: " + toHex(_tx.sha3())));
     }
     else if (ImportResult::AlreadyInChain == ret)
     {
+        std::cout << "TransactionAlreadyInChain" << std::endl;
         BOOST_THROW_EXCEPTION(
             TransactionRefused() << errinfo_comment(
                 "ImportResult::TransactionAlreadyInChain, txHash: " + toHex(_tx.sha3())));
     }
     else if (ImportResult::InvalidChainIdOrGroupId == ret)
     {
+        std::cout << "InvalidChainIdOrGroupId" << std::endl;
         BOOST_THROW_EXCEPTION(
             TransactionRefused() << errinfo_comment(
                 "ImportResult::InvalidChainIdOrGroupId, txHash: " + toHex(_tx.sha3())));
     }
     else
+    {
+        std::cout << "TransactionSubmitFailed" << std::endl;
         BOOST_THROW_EXCEPTION(
             TransactionRefused() << errinfo_comment(
                 "ImportResult::TransactionSubmitFailed, txHash: " + toHex(_tx.sha3())));
+    }
 }
 
 /**
@@ -227,7 +236,11 @@ ImportResult TxPool::verify(Transaction& trans, IfDropped _drop_policy, bool _ne
     /// nonce related to txpool must be checked at the last, since this will insert nonce of the
     /// valid transaction into the txpool nonce cache
     if (false == txPoolNonceCheck(trans))
+    {
+        std::cout << " check TxPool Nonce failed" <<std::endl;
         return ImportResult::TxPoolNonceCheckFail;
+    }
+        
     /// check chainId and groupId
     if (false == trans.checkChainIdAndGroupId(u256(g_BCOSConfig.chainId()), u256(m_groupId)))
     {

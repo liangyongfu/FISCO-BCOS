@@ -190,6 +190,7 @@ private:
         if (!m_commonNonceCheck->isNonceOk(tx, true))
         {
             TXPOOL_LOG(WARNING) << LOG_DESC("txPoolNonceCheck: check TxPool Nonce failed");
+            
             return false;
         }
         return true;

@@ -32,7 +32,7 @@ bool CommonTransactionNonceCheck::isNonceOk(dev::eth::Transaction const& _trans,
     {
         auto key = this->generateKey(_trans);
         auto iter = m_cache.find(key);
-        if (iter != m_cache.end())
+        if (iter != m_cache.end())            
             return false;
         if (needInsert)
         {

@@ -101,7 +101,7 @@ void LedgerInitializer::initConfig(boost::property_tree::ptree const& _pt)
     }
 
     //seekfunbook
-    m_ledgerManager->setLedgerMode(2);
+    //m_ledgerManager->setLedgerMode(2);
     //end seekfunbook
 }
 
