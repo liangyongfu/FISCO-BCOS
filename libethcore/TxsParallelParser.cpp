@@ -170,7 +170,26 @@ void TxsParallelParser::decode(
             throwInvalidBlockFormat("offsets.size() == 0 || txBytes.size() == 0");
 
         // parallel decoding
+        std::cout << "start decode tx totalSize:" << bytesSize << "  txNum:" << txNum <<std::endl;
         size_t maxOffset = bytesSize - objectStart - 1;
+        for(Offset_t i = 0; i < txNum; ++i)
+        {
+            Offset_t offset = offsets[i];
+            Offset_t size = offsets[i + 1] - offsets[i];
+            if (offset > maxOffset)
+                            throwInvalidBlockFormat("offset > maxOffset");
+            std::cout << "start decode tx totalSize:" << bytesSize << "  txNum:" << txNum << " offset: " << offset << " size:" <<size<<std::endl;
+            _txs[i].decode(txBytes.cropped(offset, size), _checkSig);
+            std::cout << "end decode tx" <<std::endl;
+            if (_withHash)
+            {
+                dev::h256 txHash = dev::sha3(txBytes.cropped(offset, size));
+                _txs[i].updateTransactionHashWithSig(txHash);
+            } 
+        }
+
+
+        /* 
         try
         {
             tbb::parallel_for(tbb::blocked_range<Offset_t>(0, txNum),
@@ -182,18 +201,14 @@ void TxsParallelParser::decode(
 
                         if (offset > maxOffset)
                             throwInvalidBlockFormat("offset > maxOffset");
-
+                        std::cout << "start decode tx totalSize:" << bytesSize << "  txNum:" << txNum << " offset: " << offset << " size:" <<size<<std::endl;
                         _txs[i].decode(txBytes.cropped(offset, size), _checkSig);
+                        std::cout << "end decode tx" <<std::endl;
                         if (_withHash)
                         {
                             dev::h256 txHash = dev::sha3(txBytes.cropped(offset, size));
                             _txs[i].updateTransactionHashWithSig(txHash);
-                        } /*
-                         LOG(DEBUG) << LOG_BADGE("DECODE") << LOG_DESC("decode tx:") << LOG_KV("i",
-                         i)
-                                    << LOG_KV("offset", offset)
-                                    << LOG_KV("code", toHex(txBytes.cropped(offset, size)));
-                                    */
+                        } 
                     }
                 });
         }
@@ -201,6 +216,7 @@ void TxsParallelParser::decode(
         {
             throw;
         }
+        */
     }
     catch (Exception& e)
     {

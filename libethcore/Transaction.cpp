@@ -57,6 +57,7 @@ void Transaction::decode(RLP const& rlp, CheckTransaction _checkSig)
     else 
     {
         //seekfunbook
+        m_rlpBuffer = bytes();
         decodeOld15(rlp,_checkSig);
         return;
         //end seekfunbook
@@ -112,7 +113,7 @@ void Transaction::decodeRC1(RLP const& rlp, CheckTransaction _checkSig)
 
 void Transaction::decodeRC2(RLP const& rlp, CheckTransaction _checkSig)
 {
-    std::cout<< "decodeRC2" << std::endl;
+    std::cout<< "start decodeRC2" << std::endl;
     try
     {
         if (!rlp.isList())
@@ -120,32 +121,49 @@ void Transaction::decodeRC2(RLP const& rlp, CheckTransaction _checkSig)
                                   << errinfo_comment("rc2 transaction RLP must be a list"));
 
         m_nonce = rlp[0].toInt<u256>();
+        std::cout<< "decodeRC2  nonce :" << m_nonce.str(std::ios_base::hex) << std::endl;
         m_gasPrice = rlp[1].toInt<u256>();
+        std::cout<< "decodeRC2  m_gasPrice :" << m_gasPrice.str(std::ios_base::hex) << std::endl;
         m_gas = rlp[2].toInt<u256>();
+        std::cout<< "decodeRC2  m_gas :" << m_gas.str(std::ios_base::hex) << std::endl;
         m_blockLimit = rlp[3].toInt<u256>();
+        std::cout<< "decodeRC2  m_blockLimit :" << m_blockLimit.str(std::ios_base::hex) << std::endl;
         m_type = rlp[4].isEmpty() ? ContractCreation : MessageCall;
+        std::cout<< "decodeRC2  m_type :" << m_type << std::endl;
         m_receiveAddress = rlp[4].isEmpty() ? Address() : rlp[4].toHash<Address>(RLP::VeryStrict);
         m_value = rlp[5].toInt<u256>();
+        std::cout<< "decodeRC2  m_value :" << m_value.str(std::ios_base::hex) << std::endl;
 
         if (!rlp[6].isData())
             BOOST_THROW_EXCEPTION(InvalidTransactionFormat()
                                   << errinfo_comment("rc2 transaction data RLP must be an array"));
-
         m_data = rlp[6].toBytes();
+        std::cout<< "decodeRC2 m_data size:" << m_data.size() <<std::endl;
         m_chainId = rlp[7].toInt<u256>();
+        std::cout<< "decodeRC2  m_chainId :" << m_chainId.str(std::ios_base::hex) << std::endl;
         m_groupId = rlp[8].toInt<u256>();
+        std::cout<< "decodeRC2  m_groupId :" << m_groupId.str(std::ios_base::hex) << std::endl;
         m_extraData = rlp[9].toBytes();
+        std::cout<< "decodeRC2 m_extraData :" << toHex(m_extraData) << std::endl;
 
         // decode v r s by increasing rlp index order for faster decoding
-        NumberVType v = rlp[10].toInt<NumberVType>() - VBase;
+        std::cout<< "decodeRC2 1" << std::endl;
+        RLP tmp = rlp[10];
+        std::cout<< "decodeRC2 1.1 :"  << toHex(tmp.data())<< std::endl;
+        NumberVType v = tmp.toInt<NumberVType>();
+        std::cout<< "decodeRC2 1.2 :"  << v << std::endl;
+        v = v - VBase;
+        std::cout<< "decodeRC2 2" << std::endl;
         u256 r = rlp[11].toInt<u256>();
+        std::cout<< "decodeRC2 3" << std::endl;
         u256 s = rlp[12].toInt<u256>();
+        std::cout<< "decodeRC2 4" << std::endl;
 
         m_vrs = SignatureStruct(r, s, v);
-
+        std::cout<< "decodeRC2 5" << std::endl;
         if (_checkSig >= CheckTransaction::Cheap && !m_vrs->isValid())
             BOOST_THROW_EXCEPTION(InvalidSignature());
-
+        std::cout<< "decodeRC2 6" << std::endl;
         if (_checkSig == CheckTransaction::Everything)
             m_sender = sender();
     }
@@ -153,8 +171,9 @@ void Transaction::decodeRC2(RLP const& rlp, CheckTransaction _checkSig)
     {
         _e << errinfo_name(
             "invalid rc2 transaction format: " + toString(rlp) + " RLP: " + toHex(rlp.data()));
-        throw;
+        throw _e;
     }
+    std::cout<< "end decodeRC2" << std::endl;
 }
 
 
@@ -201,11 +220,13 @@ void Transaction::decodeOld15(RLP const& rlp, CheckTransaction _checkSig)
             m_vrs = SignatureStruct{ r, s, v };
         }
 
-        m_chainId = (u256)g_BCOSConfig.chainId();
+        m_chainId = u256(g_BCOSConfig.chainId());
 
 
         //m_chainId = rlp[7].toInt<u256>();
-        m_groupId = (u256)1;
+        m_groupId = u256(1);
+        m_extraData.push_back('#');
+        m_extraData.push_back('#');
         //m_extraData = rlp[9].toBytes();
 
         // decode v r s by increasing rlp index order for faster decoding
@@ -227,6 +248,8 @@ void Transaction::decodeOld15(RLP const& rlp, CheckTransaction _checkSig)
             "invalid rc2 transaction format: " + toString(rlp) + " RLP: " + toHex(rlp.data()));
         throw;
     }
+
+
 }
 
 Address const& Transaction::safeSender() const noexcept
@@ -325,17 +348,20 @@ void Transaction::encodeRC2(bytes& _trans, IncludeSignature _sig) const
     std::cout << "encodeRC2" << std::endl;
     std::cout << "m_type:" << m_type <<std::endl; 
     std::cout << "sig:" << ((_sig ? c_sigCount : 0) + c_fieldCountRC2WithOutSig) <<std::endl; 
-    std::cout << "m_nonce:" << m_nonce.str() <<std::endl; 
-    std::cout << "m_gasPrice:" << m_gasPrice.str() <<std::endl; 
-    std::cout << "m_gas:" << m_gas.str() <<std::endl; 
-    std::cout << "m_blockLimit:" << m_blockLimit.str() <<std::endl; 
-    std::cout << "m_value:" << m_value.str() <<std::endl; 
-    std::cout << "m_data:" << toHex(m_data) <<std::endl; 
-    std::cout << "m_chainId:" << m_chainId.str() <<std::endl; 
-    std::cout << "m_groupId:" << m_groupId.str() <<std::endl; 
+    std::cout << "m_nonce:" << m_nonce.str(std::ios_base::hex) <<std::endl; 
+    std::cout << "m_gasPrice:" << m_gasPrice.str(std::ios_base::hex) <<std::endl; 
+    std::cout << "m_gas:" << m_gas.str(std::ios_base::hex) <<std::endl; 
+    std::cout << "m_blockLimit:" << m_blockLimit.str(std::ios_base::hex) <<std::endl; 
+    std::cout << "m_value:" << m_value.str(std::ios_base::hex) <<std::endl; 
+    //std::cout << "m_data:" << toHex(m_data) <<std::endl; 
+    std::cout << "m_data size: " << m_data.size() <<std::endl;
+    std::cout << "m_chainId:" << m_chainId.str(std::ios_base::hex) <<std::endl; 
+    std::cout << "m_groupId:" << m_groupId.str(std::ios_base::hex) <<std::endl; 
     std::cout << "m_extraData:" << toHex(m_extraData) <<std::endl; 
+    std::vector<byte> aaaa;
+    aaaa.push_back(m_vrs->v);
 
-    std::cout << "m_vrs :" << " v:"  <<  m_vrs->v  << "  r:" << toHex(m_vrs->r) << "s:" << toHex(m_vrs->s) <<std::endl; 
+    std::cout << "m_vrs :" << " v:"  <<  toHex(aaaa)  << "  r:" << toHex(m_vrs->r) << "s:" << toHex(m_vrs->s) <<std::endl; 
 
 
     _s.swapOut(_trans);

@@ -71,6 +71,8 @@ void version()
 
 std::string srcPath;
 uint64_t start;
+uint64_t endBlock;
+uint64_t  enableold = 0;
 std::shared_ptr<LedgerManager> manager;
 
 string initCommandLine(int argc, const char* argv[])
@@ -79,7 +81,9 @@ string initCommandLine(int argc, const char* argv[])
     main_options.add_options()("help,h", "print help information")
         ("version,v", "version of FISCO-BCOS")("config,c",boost::program_options::value<std::string>(), "config file path, eg. config.ini")
         ("src,s",boost::program_options::value<std::string>(),"src path")
-        ("startBlock,t", boost::program_options::value<uint64_t>(),"startblock");
+        ("startBlock,t", boost::program_options::value<uint64_t>(),"startblock")
+        ("endBlock,e", boost::program_options::value<uint64_t>(),"endBlock")
+        ("enableOld,e", boost::program_options::value<uint64_t>(), "enableOld");
     boost::program_options::variables_map vm;
     try
     {
@@ -137,6 +141,24 @@ string initCommandLine(int argc, const char* argv[])
         exit(0);
     }
 
+    if(vm.count("endBlock"))
+    {
+        endBlock = vm["endBlock"].as<uint64_t>();
+    }
+    else{
+        std::cout << "need endBlock " << std::endl;
+        exit(0);
+    }
+
+    if(vm.count("enableOld"))
+    {
+        enableold = vm["enableOld"].as<uint64_t>();
+    }
+    else{
+        std::cout << "need enableOld " << std::endl;
+        exit(0);
+    }
+
     return configPath;
 }
 
@@ -166,6 +188,9 @@ class BlockHash
 //线程函数
 void getSrcData()
 {
+    if(enableold != 1){
+        return;
+    }
     //获取参数
     std::string path("./config.ini");
 
@@ -193,12 +218,11 @@ void getSrcData()
     }
     std::cout << "end  open srd db" << std::endl;
 
-    std::this_thread::sleep_for(std::chrono::seconds(30));
+    std::this_thread::sleep_for(std::chrono::seconds(20));
     g_BCOSConfig.setVersion(VERSION::SEEK_VERSION);
     manager->setLedgerMode(2);
 
-    uint64_t end = start+1;
-    for( ; /*1==1*/ start < end; start++)
+    for( ; /*1==1*/ start <= endBlock; start++)
     {
         uint64_t oldblocknumber = manager->blockChain(1)->number();
         //获取已迁移之后的块
@@ -316,8 +340,8 @@ int main(int argc, const char* argv[])
     //seekfunbook   //启动一个新线程读取块，发送交易，一个块发送完之后 主动让出块，，，出块成功后再发下一个块的交易
     manager = initialize->ledgerInitializer()->ledgerManager();
     std::cout << "start a new thread." << std::endl;
-    //std::thread th(getSrcData);
-    //th.detach();
+    std::thread th(getSrcData);
+    th.detach();
     std::cout << " end start a new thread." << std::endl;
     //end seekfunbook
 
