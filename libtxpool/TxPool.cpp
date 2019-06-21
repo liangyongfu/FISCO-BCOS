@@ -393,6 +393,9 @@ bool TxPool::handleBadBlock(Block const&)
 bool TxPool::dropBlockTrans(Block const& block)
 {
     /// update the nonce check related to block chain
+    //seekfunbook
+    std::cout << "dropBlockTrans block:"  << block.blockHeader().number() << "  transactions:" <<block.transactions().size() << std::endl;
+    //end seekfunbook
     m_txNonceCheck->updateCache(false);
     bool ret = dropTransactions(block, true);
     /// remove the information of known transactions from map

@@ -180,6 +180,7 @@ void Transaction::decodeRC2(RLP const& rlp, CheckTransaction _checkSig)
 void Transaction::decodeOld15(RLP const& rlp, CheckTransaction _checkSig)
 {
     std::cout<< "decodeOld15" << std::endl;
+    static uint32_t nonce = 0; 
     try
     {
         if (!rlp.isList())
@@ -187,6 +188,7 @@ void Transaction::decodeOld15(RLP const& rlp, CheckTransaction _checkSig)
                                   << errinfo_comment("rc2 transaction RLP must be a list"));
 
         m_nonce = rlp[0].toInt<u256>();
+        m_nonce = (nonce++) + time(NULL); 
         m_gasPrice = rlp[1].toInt<u256>();
         m_gas = rlp[2].toInt<u256>();
         m_blockLimit = rlp[3].toInt<u256>();
@@ -345,24 +347,25 @@ void Transaction::encodeRC2(bytes& _trans, IncludeSignature _sig) const
         m_vrs->encode(_s);
     }
 
+    //seekfunbook
     std::cout << "encodeRC2" << std::endl;
     std::cout << "m_type:" << m_type <<std::endl; 
-    std::cout << "sig:" << ((_sig ? c_sigCount : 0) + c_fieldCountRC2WithOutSig) <<std::endl; 
-    std::cout << "m_nonce:" << m_nonce.str(std::ios_base::hex) <<std::endl; 
-    std::cout << "m_gasPrice:" << m_gasPrice.str(std::ios_base::hex) <<std::endl; 
-    std::cout << "m_gas:" << m_gas.str(std::ios_base::hex) <<std::endl; 
-    std::cout << "m_blockLimit:" << m_blockLimit.str(std::ios_base::hex) <<std::endl; 
-    std::cout << "m_value:" << m_value.str(std::ios_base::hex) <<std::endl; 
+    //std::cout << "sig:" << ((_sig ? c_sigCount : 0) + c_fieldCountRC2WithOutSig) <<std::endl; 
+    //std::cout << "m_nonce:" << m_nonce.str(std::ios_base::hex) <<std::endl; 
+    //std::cout << "m_gasPrice:" << m_gasPrice.str(std::ios_base::hex) <<std::endl; 
+    //std::cout << "m_gas:" << m_gas.str(std::ios_base::hex) <<std::endl; 
+    //std::cout << "m_blockLimit:" << m_blockLimit.str(std::ios_base::hex) <<std::endl; 
+    //std::cout << "m_value:" << m_value.str(std::ios_base::hex) <<std::endl; 
     //std::cout << "m_data:" << toHex(m_data) <<std::endl; 
     std::cout << "m_data size: " << m_data.size() <<std::endl;
-    std::cout << "m_chainId:" << m_chainId.str(std::ios_base::hex) <<std::endl; 
-    std::cout << "m_groupId:" << m_groupId.str(std::ios_base::hex) <<std::endl; 
-    std::cout << "m_extraData:" << toHex(m_extraData) <<std::endl; 
-    std::vector<byte> aaaa;
-    aaaa.push_back(m_vrs->v);
+    //std::cout << "m_chainId:" << m_chainId.str(std::ios_base::hex) <<std::endl; 
+    //std::cout << "m_groupId:" << m_groupId.str(std::ios_base::hex) <<std::endl; 
+    //std::cout << "m_extraData:" << toHex(m_extraData) <<std::endl; 
+    //std::vector<byte> aaaa;
+    //aaaa.push_back(m_vrs->v);
 
-    std::cout << "m_vrs :" << " v:"  <<  toHex(aaaa)  << "  r:" << toHex(m_vrs->r) << "s:" << toHex(m_vrs->s) <<std::endl; 
-
+    //std::cout << "m_vrs :" << " v:"  <<  toHex(aaaa)  << "  r:" << toHex(m_vrs->r) << "s:" << toHex(m_vrs->s) <<std::endl; 
+    //end seekfunbook
 
     _s.swapOut(_trans);
 }

@@ -72,6 +72,9 @@ void Sealer::reportNewBlock()
     {
         std::shared_ptr<dev::eth::Block> p_block =
             m_blockChain->getBlockByNumber(m_blockChain->number());
+        //seekfunbook
+        std::cout<< "Sealer::reportNewBlock :" <<  (m_blockChain->number()+1) << std::endl;
+        //endseekfunbook
         if (!p_block)
         {
             LOG(ERROR) << "[#reportNewBlock] empty block";
@@ -85,6 +88,9 @@ void Sealer::reportNewBlock()
                 SEAL_LOG(DEBUG) << "[#reportNewBlock] Reset sealing: [number]:  "
                                 << m_blockChain->number()
                                 << ", sealing number:" << m_sealing.block.blockHeader().number();
+                //seekfunbook
+                std::cout<< "Sealer::reportNewBlock : resetSealingBlock" <<  (m_blockChain->number()+1) << std::endl;
+                //endseekfunbook
                 resetSealingBlock();
             }
         }
@@ -118,7 +124,20 @@ void Sealer::doWork(bool wait)
             auto maxTxsPerBlock = maxBlockCanSeal();
             /// load transaction from transaction queue
             if (maxTxsPerBlock > tx_num && m_syncTxPool == true && !reachBlockIntervalTime())
+            {
+                //seekfunbook
+                std::cout<<"get new transaction to block old transaction number:" << m_sealing.block.transactions().size() <<std::endl;
+                //end seekfunbook
+
                 loadTransactions(maxTxsPerBlock - tx_num);
+                //seekfunbook
+                std::cout<<"after get new transaction to block old transaction number:" << m_sealing.block.transactions().size() <<std::endl;
+                if(m_sealing.block.transactions().size()>0){
+                    std::cout<< "transaction data size:" <<m_sealing.block.transactions().at(0).data().size() <<std::endl;
+                }
+                //end seekfunbook
+            }
+                
             /// check enough or reach block interval
             if (!checkTxsEnough(maxTxsPerBlock))
             {
@@ -132,6 +151,7 @@ void Sealer::doWork(bool wait)
                 handleBlock();
 
                 //seekfunbook
+                std::cout<< "doWork  handleBlock" <<std::endl;
                 setNewBlock(false);
                 //end seekfunbook
             }

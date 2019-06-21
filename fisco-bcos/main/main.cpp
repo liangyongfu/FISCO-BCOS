@@ -218,7 +218,7 @@ void getSrcData()
     }
     std::cout << "end  open srd db" << std::endl;
 
-    std::this_thread::sleep_for(std::chrono::seconds(20));
+    std::this_thread::sleep_for(std::chrono::seconds(10));
     g_BCOSConfig.setVersion(VERSION::SEEK_VERSION);
     manager->setLedgerMode(2);
 
@@ -230,7 +230,7 @@ void getSrcData()
         
         std::cout << "start get block hash by number:" << start <<std::endl;
         {        
-            static thread_local FixedHash<33> h;
+            FixedHash<33> h;
             dev::bytesRef aa(h.data() + 24, 8);
             toBigEndian_s(start, aa);
             h[32] = (uint8_t)1;
@@ -244,7 +244,7 @@ void getSrcData()
         std::string d;
         std::cout << "start get  block" << std::endl;
         {
-            static thread_local FixedHash<33> h2(RLP(blockHash).toHash<h256>());
+            FixedHash<33> h2(RLP(blockHash).toHash<h256>());
             h2[32] = (uint8_t)0;
             leveldb::Slice s2((char*)h2.data(), 33);
             pleveldb->Get(readoption, s2, &d);
@@ -254,18 +254,16 @@ void getSrcData()
                 throw std::runtime_error(" src ::::get block failed");
                 exit(0);
             }
-
-        }  
-        std::cout << "end get  block" << std::endl;
+            std::cout << "end get  block size:" << d.size() << "   block hash:" << dev::toHex(blockHash)  << " slise" << dev::toHex(s2.ToString()) << std::endl;
+        }          
 
         //获取块中交易，并将交易发送到ledger的txpool中
-        RLP block(d);        
-        
+        RLP block(d);   
 
         bytes bblock;
         bblock.resize(d.size());
         memcpy(bblock.data(), d.data(), d.size());
-        std::cout << "there are " << block[1].itemCount() << " txs in block " << start << std::endl;
+        std::cout << "there are " << block[1].itemCount() << " txs in block " << start << "  size:" <<bblock.size() <<  std::endl;
 
         //dev::eth::BlockHeader blockHeader(bblock);
         std::cout << "there are " << block[1].itemCount() << " txs in block " << start << " block time:" <<  uint64_t(block[0][12].toInt<u256>()) << std::endl;
@@ -276,8 +274,9 @@ void getSrcData()
         for (unsigned i = 0; i < block[1].itemCount(); i++)
         {
             //block[1][i].data()  可以转为transaction
+            std::cout << "txPool size:" << manager->txPool(1)->pendingSize() << std::endl;
             Transaction tx(block[1][i].data(),CheckTransaction::Everything);
-            manager->txPool(1)->submit(tx);            
+            manager->txPool(1)->submit(tx);                        
         }   
     
         //块中交易发送完后，设置ledger 出块

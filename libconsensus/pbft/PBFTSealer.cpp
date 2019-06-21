@@ -65,6 +65,9 @@ void PBFTSealer::handleBlock()
     m_pbftEngine->generatePrepare(m_sealing.block);
     if (m_pbftEngine->shouldReset(m_sealing.block))
     {
+        //seekfunbook
+        std::cout<< "PBFTSealer::handleBlock resetSealingBlock" << std::endl;
+        //end seekfunbook
         resetSealingBlock();
         m_signalled.notify_all();
         m_blockSignalled.notify_all();

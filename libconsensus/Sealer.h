@@ -85,6 +85,7 @@ public:
     }
     virtual void onBlockChanged()
     {
+        std::cout << "onBlockChanged" <<std::endl;
         m_syncBlock = true;
         m_signalled.notify_all();
         m_blockSignalled.notify_all();
