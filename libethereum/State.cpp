@@ -293,14 +293,14 @@ bool State::addressHasCode(Address const& _id) const
 		return false;
 }
 
-u256 State::balance(Address const& ) const
+u256 State::balance(Address const& _id ) const
 {
-	return 0xFFFFFFFFFFFFFFFF;
-	/*
+	//return 0xFFFFFFFFFFFFFFFF;
+	
 	if (auto a = account(_id))
 		return a->balance();
 	else
-		return 0;*/
+		return 0;
 }
 
 void State::incNonce(Address const& _addr)
@@ -333,7 +333,7 @@ void State::addBalance(Address const& _id, u256 const& _amount)
 		// the account as dirty. Dirty account are not removed from the cache
 		// and are cleared if empty at the end of the transaction.
 
-		//a->addBalance(_amount);
+		a->addBalance(_amount);
 	}
 	else
 		createAccount(_id, {requireAccountStartNonce(), _amount});
@@ -345,7 +345,7 @@ void State::addBalance(Address const& _id, u256 const& _amount)
 
 void State::subBalance(Address const& _addr, u256 const& _value)
 {
-	return;
+//	return;
 
 	if (_value == 0)
 		return;

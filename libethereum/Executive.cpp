@@ -185,7 +185,7 @@ void Executive::initialize(Transaction const& _transaction)
 	// Avoid transactions that would take us beyond the block gas limit.
 	u256 startGasUsed = m_envInfo.gasUsed();
 
-	
+    //判断交易使用的gas和初始gas是否大于环境设置的gaslimit	
 	if (startGasUsed + (bigint)m_t.gas() > m_envInfo.gasLimit())
 	{
 		LOG(WARNING) << "Cannot fit tx in block" << m_envInfo.number() << ": Require <" << (m_envInfo.gasLimit() - startGasUsed) << " Got" << m_t.gas();
@@ -193,13 +193,46 @@ void Executive::initialize(Transaction const& _transaction)
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((bigint)(m_envInfo.gasLimit() - startGasUsed), (bigint)m_t.gas()));
 	}
 
-	
+	//判断最小需要的gas是否足
 	m_baseGasRequired = m_t.gasRequired(m_sealEngine.evmSchedule(m_envInfo));
+	/*if (m_baseGasRequired > m_t.gas())
+	{
+		LOG(INFO) << "Not enough gas to pay for the transaction: Require >" << m_baseGasRequired << " Got" << m_t.gas();
+		m_excepted = TransactionException::OutOfGasBase;
+		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(m_baseGasRequired, (bigint)m_t.gas()));
+	}*/
 	
+	// Avoid invalid transactions.
+	/*
+	u256 nonceReq;
+	try
+	{
+		nonceReq = m_s.getNonce(m_t.sender());//这里会校验签名  块签名那里会验证 rpc会验证 p2p会验证 所以这里不需要了
+	}
+	catch (...)
+	{
+		LOG(INFO) << "Invalid Signature";
+		m_excepted = TransactionException::InvalidSignature;
+		throw;
+	}
+	*/
+	/*if (m_t.nonce() != nonceReq)
+	{
+		LOG(INFO) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		m_excepted = TransactionException::InvalidNonce;
+		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
+	}*/
 
 	// Avoid unaffordable transactions.
 	bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
 	bigint totalCost = m_t.value() + gasCost;
+	
+	if (m_s.balance(m_t.sender()) < totalCost)
+	{
+		LOG(INFO) << "Not enough cash: Require >" << totalCost << "=" << m_t.gas() << "*" << m_t.gasPrice() << "+" << m_t.value() << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
+		m_excepted = TransactionException::NotEnoughCash;
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().abridged()));
+	}
 
 	m_gasCost = (u256)gasCost;  // Convert back to 256-bit, safe now.
 }
