@@ -590,7 +590,7 @@ function Transaction(data) {
 function signTransaction(tx_data,privKey,callback)
 {
     // convert string private key to a Buffer Object
-    var privateKey = new Buffer(privKey, 'hex');
+    var privateKey = new Buffer.from(privKey, 'hex');
     var tx = new Transaction(tx_data);
     tx.sign(privateKey);
     // Build a serialized hex version of the Tx
@@ -886,6 +886,40 @@ async function sendRawTransaction(account, privateKey, to, func, params) {
 	});
 }
 
+async function transfer(fromAddress,fromPriKey,to,value){
+        var postdata = {
+                data: '',
+                from: fromAddress,
+                to: to,
+                gas: 1000000,
+                value: 20000000000,
+                randomid:Math.ceil(Math.random()*100000000),
+                blockLimit:await getBlockNumber() + 1000,
+        }
+
+        var signTX = signTransaction(postdata, fromPriKey, null);
+
+        return new Promise((resolve, reject) => {
+                web3.eth.sendRawTransaction(signTX, function(err, address) {
+                        if (!err) {
+                                console.log("send transaction success: " + address);
+
+                                checkForTransactionResult(address, (err, receipt) => {
+                                        resolve(receipt);
+                                });
+
+                                //resolve(address);
+                        }
+                        else {
+                            console.log("send transaction failed！",err);
+
+                                return;
+                        }
+                });
+        });
+
+
+}
 async function sendUTXOTransaction(account, privateKey, params) {
 	var postdata = {
 		data: params[0],
@@ -935,4 +969,4 @@ exports.rawDeploy = rawDeploy;
 exports.signTransaction=signTransaction;
 exports.sendUTXOTransaction = sendUTXOTransaction;
 exports.callUTXO = callUTXO;
-//exports.deploy=deploy;
+exports.transfer=transfer;
